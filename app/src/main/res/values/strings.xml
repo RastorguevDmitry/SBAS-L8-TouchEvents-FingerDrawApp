@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FingerDrawApp</string>
+    <string name="clear">очистить экран</string>
+</resources>
