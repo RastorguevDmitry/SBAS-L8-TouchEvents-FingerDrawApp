@@ -12,14 +12,32 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <Button
-            android:id="@+id/btn_clear"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/clear"
-            android:textSize="@dimen/default_text_size">
+            android:orientation="horizontal">
 
-        </Button>
+            <Button
+                android:id="@+id/btn_clear"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="5"
+                android:text="@string/clear"
+                android:textSize="@dimen/default_text_size">
+
+            </Button>
+
+            <ImageButton
+                android:id="@+id/btn_scroll"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:background="@drawable/ic_unfold_more_black_24dp"
+
+                ></ImageButton>
+
+        </LinearLayout>
+
 
         <com.rdi.fingerdrowact.DrawBoxLinePathView
             android:id="@+id/draw_view"
@@ -54,6 +72,13 @@
                 android:layout_height="64dp"
                 android:layout_weight="1"
                 android:background="@drawable/ic_timeline_black_24dp"></ImageButton>
+
+            <ImageButton
+                android:id="@+id/btn_draw_poly_paimter"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_weight="1"
+                android:background="@drawable/ic_polymer_black_24dp"></ImageButton>
 
         </LinearLayout>
 

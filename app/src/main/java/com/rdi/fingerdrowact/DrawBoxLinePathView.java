@@ -6,6 +6,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -15,18 +16,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.rdi.fingerdrowact.MainActivity.currentColor;
-import static com.rdi.fingerdrowact.MainActivity.currentTYPEOFFIGURE;
+import static com.rdi.fingerdrowact.MainActivity.currentTypeFigure;
 
 public class DrawBoxLinePathView extends View {
 
     private Path mPath;
     private Paint mDotPaint = new Paint();
-    private Paint mBoxPaint = new Paint();
 
-    private FigureFromTwoPoint mBox;
-    private FigureFromTwoPoint mLine;
+    private FigureFromTwoPoint mFigureFromTwoPoint;
 
     private List<ElementForListFigure> mFigureList = new ArrayList<>();
+
+    private GestureDetector gestureDetector;
+    private List<PointF> pointList;
+    private boolean mScroll = false;
+
+    public void setScroll(boolean scroll) {
+        mScroll = scroll;
+    }
+
+    public void changeScroll() {
+        if (mScroll == true) mScroll = false;
+        else mScroll = true;
+
+    }
 
     public DrawBoxLinePathView(Context context) {
         this(context, null);
@@ -34,115 +47,187 @@ public class DrawBoxLinePathView extends View {
 
     public DrawBoxLinePathView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        initPaint();
+        init();
     }
 
     public DrawBoxLinePathView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
     }
 
-    private void initPaint() {
+    private void init() {
         mDotPaint.setStrokeWidth(10f);
         mDotPaint.setAntiAlias(true);
         mDotPaint.setStyle(Paint.Style.STROKE);
-        mBoxPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        gestureDetector = new GestureDetector(getContext(), new GestureDetector.OnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                for (ElementForListFigure drawObject : mFigureList) {
+                    switch (drawObject.getCurrentType()) {
+                        case BOX:
+                        case LINE:
+                            ((FigureFromTwoPoint) drawObject.getObject()).scroll(-distanceX, -distanceY);
+                            break;
+                        case PATH:
+                        case POLY:
+                            ((Path) drawObject.getObject()).offset(-distanceX, -distanceY);
+                            break;
+                    }
+                }
+                invalidate();
+                return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                return false;
+            }
+        });
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        float x = event.getX();
-        float y = event.getY();
+        if (mScroll) {
+            return gestureDetector.onTouchEvent(event);
+        }
 
-        PointF currentPoint = new PointF(x, y);
-        int action = event.getAction();
-
-        switch (currentTYPEOFFIGURE) {
-            case BOX: {
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mBox = new FigureFromTwoPoint(currentPoint);
-                        mFigureList.add(new ElementForListFigure(mBox, currentColor, MainActivity.TYPE_OF_FIGURE.BOX));
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (mBox != null) {
-                            mBox.setEnd(currentPoint);
-                            invalidate();
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        mBox = null;
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+        switch (currentTypeFigure) {
+            case BOX:
+            case LINE: {
+                onTouchEventForFigureFromTwoPoint(event);
             }
             break;
             case PATH: {
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mPath = new Path();
-                        mPath.moveTo(x, y);
-                        mFigureList.add(new ElementForListFigure(mPath, currentColor, MainActivity.TYPE_OF_FIGURE.PATH));
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        mPath.lineTo(x, y);
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        mPath = null;
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+                onTouchEventForPath(event);
             }
             break;
-            case LINE: {
-                switch (action) {
-                    case MotionEvent.ACTION_DOWN:
-                        mLine = new FigureFromTwoPoint(currentPoint);
-                        mFigureList.add(new ElementForListFigure(mLine, currentColor, MainActivity.TYPE_OF_FIGURE.LINE));
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (mLine != null) {
-                            mLine.setEnd(currentPoint);
-                            invalidate();
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        break;
-                    default:
-                        return super.onTouchEvent(event);
-                }
+            case POLY: {
+                onTouchEventForPoly(event);
             }
             break;
+
+            default:
+                return super.onTouchEvent(event);
         }
         invalidate();
         return true;
     }
 
+    private void onTouchEventForPoly(MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mPath = new Path();
+                mFigureList.add(new ElementForListFigure(mPath, currentColor, currentTypeFigure));
+                pointList = new ArrayList<>();
+                pointList.add(new PointF(event.getX(), event.getY()));
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                int pointerId = event.getPointerId(event.getActionIndex());
+                if (pointList.size() == pointerId) {
+                    pointList.add(new PointF(
+                            event.getX(event.getActionIndex()),
+                            event.getY(event.getActionIndex())));
+                } else {
+                    PointF point = pointList.get(pointerId);
+                    point.x = event.getX(event.getActionIndex());
+                    point.y = event.getY(event.getActionIndex());
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                for (int i = 0; i < event.getPointerCount(); i++) {
+                    int id = event.getPointerId(i);
+                    PointF point = pointList.get(id);
+                    point.x = event.getX(i);
+                    point.y = event.getY(i);
+                }
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                break;
+        }
+        mPath.moveTo(pointList.get(0).x, pointList.get(0).y);
+        for (int i = 1; i < pointList.size(); i++) {
+            mPath.lineTo(pointList.get(i).x, pointList.get(i).y);
+        }
+        mPath.lineTo(pointList.get(0).x, pointList.get(0).y);
+    }
+
+    private void onTouchEventForPath(MotionEvent event) {
+        float x = event.getX();
+        float y = event.getY();
+        int action = event.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                mPath = new Path();
+                mPath.moveTo(x, y);
+                mFigureList.add(new ElementForListFigure(mPath, currentColor, currentTypeFigure));
+                break;
+            case MotionEvent.ACTION_MOVE:
+                mPath.lineTo(x, y);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mPath = null;
+                break;
+        }
+    }
+
+    private void onTouchEventForFigureFromTwoPoint(MotionEvent event) {
+        PointF currentPoint = new PointF(event.getX(), event.getY());
+        int action = event.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                mFigureFromTwoPoint = new FigureFromTwoPoint(currentPoint);
+                mFigureList.add(new ElementForListFigure(mFigureFromTwoPoint, currentColor, currentTypeFigure));
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (mFigureFromTwoPoint != null) {
+                    mFigureFromTwoPoint.setEnd(currentPoint);
+                    invalidate();
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mFigureFromTwoPoint = null;
+                break;
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
         for (ElementForListFigure drawObject : mFigureList) {
             switch (drawObject.getCurrentType()) {
                 case BOX:
                     drawBox(canvas, drawObject);
                     break;
-                case PATH:
-                    drawPath(canvas, drawObject);
-                    break;
                 case LINE:
                     drawLine(canvas, drawObject);
                     break;
+                case PATH:
+                case POLY:
+                    drawPath(canvas, drawObject);
+                    break;
             }
         }
-    }
-
-    private void drawPath(Canvas canvas, ElementForListFigure drawObject) {
-        mDotPaint.setColor(drawObject.getColor());
-        canvas.drawPath((Path) drawObject.getObject(), mDotPaint);
     }
 
     private void drawLine(Canvas canvas, ElementForListFigure drawObject) {
@@ -154,24 +239,34 @@ public class DrawBoxLinePathView extends View {
                 currentLine.getEnd().x,
                 currentLine.getEnd().y,
                 mDotPaint);
-
     }
 
     private void drawBox(Canvas canvas, ElementForListFigure drawObject) {
+        mDotPaint.setColor(drawObject.getColor());
         FigureFromTwoPoint currentBox = (FigureFromTwoPoint) drawObject.getObject();
-        mBoxPaint.setColor(drawObject.getColor());
         canvas.drawRect(
                 Math.min(currentBox.getEnd().x, currentBox.getStart().x),
                 Math.min(currentBox.getEnd().y, currentBox.getStart().y),
                 Math.max(currentBox.getEnd().x, currentBox.getStart().x),
                 Math.max(currentBox.getEnd().y, currentBox.getStart().y),
-                mBoxPaint);
+                mDotPaint);
+    }
+
+    private void drawPath(Canvas canvas, ElementForListFigure drawObject) {
+        mDotPaint.setColor(drawObject.getColor());
+        switch (drawObject.getCurrentType()) {
+            case POLY:
+                mDotPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+                break;
+            case PATH:
+                mDotPaint.setStyle(Paint.Style.STROKE);
+                break;
+        }
+        canvas.drawPath((Path) drawObject.getObject(), mDotPaint);
     }
 
     public void clear() {
         mFigureList.clear();
         invalidate();
     }
-
-
 }

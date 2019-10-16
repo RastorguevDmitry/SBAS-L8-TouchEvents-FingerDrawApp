@@ -31,4 +31,9 @@ public class FigureFromTwoPoint {
     public void setEnd(PointF end) {
         mEnd = end;
     }
+
+    public void scroll(float distanceX, float distanceY) {
+        mStart.offset(distanceX, distanceY);
+        mEnd.offset(distanceX, distanceY);
+    }
 }

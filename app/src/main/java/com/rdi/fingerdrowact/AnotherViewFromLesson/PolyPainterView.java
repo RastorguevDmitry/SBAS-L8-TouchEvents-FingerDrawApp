@@ -53,6 +53,7 @@ public class PolyPainterView extends View {
                 PointF two = pointList.get(i);
 
                 canvas.drawLine(one.x, one.y, two.x, two.y, mPaint);
+
             }
         }
     }
