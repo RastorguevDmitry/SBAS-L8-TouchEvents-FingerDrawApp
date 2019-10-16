@@ -164,6 +164,7 @@ public class DrawBoxLinePathView extends View {
             case MotionEvent.ACTION_CANCEL:
                 break;
         }
+        mPath.rewind();
         mPath.moveTo(pointList.get(0).x, pointList.get(0).y);
         for (int i = 1; i < pointList.size(); i++) {
             mPath.lineTo(pointList.get(i).x, pointList.get(i).y);
